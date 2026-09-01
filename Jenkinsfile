@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -29,14 +33,30 @@ pipeline {
                 sh 'echo "Build step placeholder"'
             }
         }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+                sh '''
+                    echo "Simulating deployment process..."
+                    echo "Copying build artifacts to deployment directory..."
+                    mkdir -p deployment_output
+                    echo "App deployed successfully at $(date)" > deployment_output/deploy_log.txt
+                    cat deployment_output/deploy_log.txt
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline completed successfully! Application deployed.'
         }
         failure {
-            echo 'Pipeline failed. Check logs above.'
+            echo 'Pipeline failed. Check logs above for details.'
+        }
+        always {
+            echo "Build finished at ${new Date()}"
         }
     }
 }
