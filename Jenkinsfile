@@ -34,19 +34,13 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying application...'
-                sh '''
-                    echo "Simulating deployment process..."
-                    echo "Copying build artifacts to deployment directory..."
-                    mkdir -p deployment_output
-                    echo "App deployed successfully at $(date)" > deployment_output/deploy_log.txt
-                    cat deployment_output/deploy_log.txt
-                '''
+                echo 'Applying Kubernetes manifests...'
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl rollout status deployment/flask-app-deployment'
             }
         }
-    }
 
     post {
         success {
