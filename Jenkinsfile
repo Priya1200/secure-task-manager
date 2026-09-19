@@ -41,6 +41,7 @@ pipeline {
                 sh 'kubectl rollout status deployment/flask-app-deployment'
             }
         }
+    }
 
     post {
         success {
