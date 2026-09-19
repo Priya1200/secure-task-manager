@@ -37,8 +37,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo 'Applying Kubernetes manifests...'
-                sh 'kubectl apply -f k8s/deployment.yaml'
-                sh 'kubectl rollout status deployment/flask-app-deployment'
+                sh 'kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f k8s/deployment.yaml'
+                sh 'kubectl --kubeconfig=/var/lib/jenkins/.kube/config rollout status deployment/flask-app-deployment'
             }
         }
     }
