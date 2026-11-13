@@ -1,0 +1,6 @@
+services:
+  kibana:
+    mem_limit: 1g
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=700
+      - TELEMETRY_OPTIN=false
