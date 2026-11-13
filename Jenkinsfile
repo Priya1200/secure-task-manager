@@ -27,6 +27,13 @@ pipeline {
             }
         }
 
+        stage('Security Scan (DevSecOps)') {
+            steps {
+                echo 'Running security gate: dependency scan, SAST, secret scan, image scan...'
+                sh 'bash security/scan.sh'
+            }
+        }
+
         stage('Build') {
             steps {
                 echo 'Building application...'
