@@ -23,7 +23,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 echo 'Running tests...'
-                sh 'echo "Tests will go here"'
+                sh 'docker run --rm -v "$PWD/docker-practice":/src -w /src python:3.11-slim sh -c "pip install -q flask==3.1.3 pytest && python -m pytest -v tests"'
             }
         }
 
