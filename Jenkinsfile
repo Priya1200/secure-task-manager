@@ -37,7 +37,10 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building application...'
-                sh 'echo "Build step placeholder"'
+                sh '''
+                docker build -t sample-flask-app:1.0 docker-practice
+                docker save sample-flask-app:1.0 | docker exec -i minikube ctr -n k8s.io images import -
+                '''
             }
         }
 
@@ -45,6 +48,7 @@ pipeline {
             steps {
                 echo 'Applying Kubernetes manifests...'
                 sh 'kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f k8s/deployment.yaml'
+                sh 'kubectl --kubeconfig=/var/lib/jenkins/.kube/config rollout restart deployment/flask-app-deployment'
                 sh 'kubectl --kubeconfig=/var/lib/jenkins/.kube/config rollout status deployment/flask-app-deployment'
             }
         }
