@@ -130,36 +130,6 @@ Triggered via **SCM polling** (`pollSCM('H/5 * * * *')`) rather than a webhook, 
 
 ---
 
-## Getting Started (local environment)
-
-```bash
-# Clone the repo
-git clone https://github.com/Priya1200/secure-task-manager.git
-cd secure-task-manager
-
-# Build and run the containerized app
-cd docker-practice
-docker build -t sample-flask-app:1.0 .
-docker run -d -p 5000:5000 --name flask-container sample-flask-app:1.0
-
-# Deploy to a local Kubernetes cluster (Minikube)
-cd ../k8s
-minikube start --driver=docker
-kubectl apply -f deployment.yaml
-kubectl get pods
-
-# Run the Ansible playbook
-cd ../ansible
-ansible-playbook -i inventory.ini playbook.yml
-
-# Provision infrastructure with Terraform
-cd ../terraform
-terraform init
-terraform plan
-terraform apply -auto-approve
-```
-
----
 
 ## Status & Next Steps
 
