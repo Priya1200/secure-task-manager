@@ -10,3 +10,8 @@ venv/
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.*
+
+# Test artifacts
+.coverage
+.pytest_cache/
+__pycache__/
