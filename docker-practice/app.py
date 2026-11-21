@@ -41,7 +41,7 @@ def tasks():
 
 @app.route('/health')
 def health():
-    return jsonify(status="ok")
+    return jsonify(status="broken")
 
 
 @app.route('/flags')
