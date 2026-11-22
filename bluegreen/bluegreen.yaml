@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bluegreen
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flags-blue
+  namespace: bluegreen
+data:
+  flags.json: '{"new_greeting": false, "beta_tasks": false}'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flags-green
+  namespace: bluegreen
+data:
+  flags.json: '{"new_greeting": true, "beta_tasks": true}'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-blue
+  namespace: bluegreen
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: flask, version: blue}
+  template:
+    metadata:
+      labels: {app: flask, version: blue}
+    spec:
+      containers:
+      - name: flask
+        image: sample-flask-app:1.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          httpGet: {path: /health, port: 5000}
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        volumeMounts:
+        - {name: flags, mountPath: /app/config}
+      volumes:
+      - name: flags
+        configMap: {name: flags-blue}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-green
+  namespace: bluegreen
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: flask, version: green}
+  template:
+    metadata:
+      labels: {app: flask, version: green}
+    spec:
+      containers:
+      - name: flask
+        image: sample-flask-app:1.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          httpGet: {path: /health, port: 5000}
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        volumeMounts:
+        - {name: flags, mountPath: /app/config}
+      volumes:
+      - name: flags
+        configMap: {name: flags-green}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-svc
+  namespace: bluegreen
+spec:
+  selector: {app: flask, version: blue}
+  ports:
+  - {port: 80, targetPort: 5000}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-preview
+  namespace: bluegreen
+spec:
+  selector: {app: flask, version: green}
+  ports:
+  - {port: 80, targetPort: 5000}
