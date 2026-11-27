@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Namespace
+metadata: { name: canary }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app-stable, namespace: canary }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: demo, track: stable } }
+  template:
+    metadata: { labels: { app: demo, track: stable } }
+    spec:
+      containers:
+        - name: app
+          image: hashicorp/http-echo:latest
+          imagePullPolicy: IfNotPresent
+          args: ["-listen=:8080", "-text=STABLE-v1"]
+          ports: [{ containerPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app-canary, namespace: canary }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: demo, track: canary } }
+  template:
+    metadata: { labels: { app: demo, track: canary } }
+    spec:
+      containers:
+        - name: app
+          image: hashicorp/http-echo:latest
+          imagePullPolicy: IfNotPresent
+          args: ["-listen=:8080", "-text=CANARY-v2"]
+          ports: [{ containerPort: 8080 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: app-svc, namespace: canary }
+spec:
+  selector: { app: demo }          # stable + canary dono is label se match
+  ports: [{ port: 80, targetPort: 8080 }]
