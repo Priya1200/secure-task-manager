@@ -1,0 +1,75 @@
+# SQLite lives in a file, so the database sits on a persistent volume and the app runs ONE replica.
+# (To scale to several replicas the database must move to a server such as PostgreSQL.)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: taskmanager-data
+  namespace: taskmanager
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 200Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskmanager
+  namespace: taskmanager
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # the old pod stops before the new one opens the same SQLite file
+  selector:
+    matchLabels: { app: taskmanager }
+  template:
+    metadata:
+      labels: { app: taskmanager }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001        # makes the volume writable for this user
+      containers:
+        - name: taskmanager
+          image: taskmanager:1.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: SECRET_KEY            # comes from a Kubernetes Secret, never from Git
+              valueFrom:
+                secretKeyRef: { name: taskmanager-secrets, key: secret_key }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          readinessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+          volumeMounts:
+            - name: data
+              mountPath: /app/instance
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: taskmanager-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskmanager
+  namespace: taskmanager
+spec:
+  selector: { app: taskmanager }
+  ports:
+    - port: 80
+      targetPort: 5000

@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+    environment {
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
+        IMAGE      = 'taskmanager:1.0'
+    }
+    options { timeout(time: 30, unit: 'MINUTES') }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from repository...'
+                checkout scm
+            }
+        }
+
+        stage('Unit Tests + Coverage Gate') {
+            steps {
+                echo 'Running unit tests (build fails if coverage is below 80 percent)...'
+                sh '''
+                    docker run --rm -e PYTHONDONTWRITEBYTECODE=1 -e COVERAGE_FILE=/tmp/.coverage \
+                        -v "$PWD/taskmanager":/src:ro -w /src python:3.11-slim sh -c \
+                        "pip install -q -r requirements-dev.txt && python -m pytest -v tests -p no:cacheprovider --cov=app --cov-report=term-missing --cov-fail-under=80"
+                '''
+            }
+        }
+
+        stage('Security Scan (DevSecOps)') {
+            steps {
+                echo 'Running security gate: dependency scan, SAST, secret scan, image scan...'
+                sh 'bash taskmanager/security/scan.sh'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building the Task Manager image and loading it into Minikube...'
+                sh '''
+                    docker build -t $IMAGE taskmanager
+                    docker save $IMAGE | docker exec -i minikube ctr -n k8s.io images import -
+                '''
+            }
+        }
+
+        stage('Integration Tests (gate)') {
+            steps {
+                echo 'Starting the built image and testing it over HTTP like a real user...'
+                sh '''
+                    docker rm -f tm-it 2>/dev/null || true
+                    docker network create tm-net 2>/dev/null || true
+                    docker run -d --name tm-it --network tm-net -e SECRET_KEY="$(head -c 32 /dev/urandom | base64)" $IMAGE
+                    RC=0
+                    docker run --rm --network tm-net -e BASE_URL=http://tm-it:5000 -e PYTHONDONTWRITEBYTECODE=1 \
+                        -v "$PWD/taskmanager":/src:ro -w /src python:3.11-slim sh -c \
+                        "pip install -q requests pytest && python -m pytest -v integration_tests -p no:cacheprovider" || RC=$?
+                    docker rm -f tm-it
+                    exit $RC
+                '''
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo 'Deploying to Kubernetes (the secret key is created once, never stored in Git)...'
+                sh '''
+                    kubectl create namespace taskmanager --dry-run=client -o yaml | kubectl apply -f -
+                    kubectl -n taskmanager get secret taskmanager-secrets >/dev/null 2>&1 || \
+                        head -c 32 /dev/urandom | base64 | kubectl -n taskmanager create secret generic taskmanager-secrets --from-file=secret_key=/dev/stdin
+                    kubectl apply -f taskmanager/k8s/taskmanager.yaml
+                    kubectl -n taskmanager rollout restart deployment/taskmanager
+                    kubectl -n taskmanager rollout status deployment/taskmanager --timeout=180s
+                '''
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                sh '''
+                    kubectl -n taskmanager exec deploy/taskmanager -- python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:5000/health').read().decode())"
+                '''
+            }
+        }
+    }
+
+    post {
+        success { echo 'Pipeline completed successfully! Task Manager deployed.' }
+        failure { echo 'Pipeline failed. Check logs above for details.' }
+        always  {
+            sh 'docker rm -f tm-it 2>/dev/null || true'
+            echo "Build finished at ${new Date()}"
+        }
+    }
+}

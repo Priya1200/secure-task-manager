@@ -5,8 +5,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && pip uninstall -y setuptools wheel
 COPY app ./app
 COPY wsgi.py .
-# run as a normal user, and give it one writable folder for the database
-RUN useradd -m appuser && mkdir -p /app/instance && chown appuser /app/instance
+# run as a normal user (fixed numeric id, so Kubernetes can verify it), with one writable folder for the database
+RUN useradd -m -u 10001 appuser && mkdir -p /app/instance && chown appuser /app/instance
 USER appuser
 ENV DATABASE_URL=sqlite:////app/instance/taskmanager.db
 EXPOSE 5000

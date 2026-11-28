@@ -1,0 +1,7 @@
+# Use the default rules, but do not flag the obviously fake credentials inside test code.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "test code uses fake credentials only"
+paths = ['''tests/''', '''integration_tests/''']

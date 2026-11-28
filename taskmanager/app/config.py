@@ -15,6 +15,7 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
-    SECRET_KEY = "test-only-not-a-real-secret"
+    # fake key, used by the unit tests only
+    SECRET_KEY = "test-only-not-a-real-secret"  # nosec B105
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False                           # turned on in the CSRF test
