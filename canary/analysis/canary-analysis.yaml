@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app-stable, namespace: canary }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: demo, track: stable } }
+  template:
+    metadata: { labels: { app: demo, track: stable } }
+    spec:
+      containers:
+        - name: app
+          image: sample-flask-app:1.0
+          imagePullPolicy: Never
+          command: ["python", "/cfg/server.py"]
+          env:
+            - { name: VERSION, value: "v1" }
+            - { name: ERROR_RATE, value: "0" }
+            - { name: LATENCY_MS, value: "10" }
+          ports: [{ containerPort: 8080 }]
+          readinessProbe: { tcpSocket: { port: 8080 }, periodSeconds: 2 }
+          volumeMounts: [{ name: cfg, mountPath: /cfg }]
+      volumes: [{ name: cfg, configMap: { name: canary-server } }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app-canary, namespace: canary }
+spec:
+  replicas: 0
+  selector: { matchLabels: { app: demo, track: canary } }
+  template:
+    metadata: { labels: { app: demo, track: canary } }
+    spec:
+      containers:
+        - name: app
+          image: sample-flask-app:1.0
+          imagePullPolicy: Never
+          command: ["python", "/cfg/server.py"]
+          env:
+            - { name: VERSION, value: "v2" }
+            - { name: ERROR_RATE, value: "0" }
+            - { name: LATENCY_MS, value: "10" }
+          ports: [{ containerPort: 8080 }]
+          readinessProbe: { tcpSocket: { port: 8080 }, periodSeconds: 2 }
+          volumeMounts: [{ name: cfg, mountPath: /cfg }]
+      volumes: [{ name: cfg, configMap: { name: canary-server } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: app-svc, namespace: canary }
+spec:
+  selector: { app: demo }
+  ports: [{ port: 80, targetPort: 8080 }]
