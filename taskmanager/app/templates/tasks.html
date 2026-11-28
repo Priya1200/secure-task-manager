@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My tasks{% endblock %}
+{% block content %}
+<h2>My tasks</h2>
+<form method="post" action="{{ url_for('tasks.create_task') }}" id="task-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Title <input name="title" required maxlength="100"></label>
+  <label>Description <input name="description" maxlength="500"></label>
+  <button type="submit">Add task</button>
+</form>
+<ul id="task-list">
+  {% for t in tasks %}
+  <li class="{{ 'done' if t.done else '' }}">
+    <span class="title">{{ t.title }}</span>
+    {% if t.description %}<span class="desc"> - {{ t.description }}</span>{% endif %}
+    <form method="post" action="{{ url_for('tasks.toggle_task', task_id=t.id) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">{{ 'Undo' if t.done else 'Done' }}</button>
+    </form>
+    <form method="post" action="{{ url_for('tasks.delete_task', task_id=t.id) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Delete</button>
+    </form>
+  </li>
+  {% else %}
+  <li id="empty">No tasks yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
